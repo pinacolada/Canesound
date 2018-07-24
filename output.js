@@ -14,34 +14,37 @@ let transY = new VSlider(stage, "Trans Y", grid.r + 5, grid.b - 100, 20, 100, fa
 let currentTool;
 let draw = [];
 let tools;
-/*
 const mgLeft = grid.x - 75, mgTop = grid.y, ecart = 70;
 tools = [
     new LineTool(stage, mgLeft, mgTop + ecart * 0, toolLineStyle, showCurrentTool),
     new CurveTool(stage, mgLeft, mgTop + ecart * 1, toolLineStyle, showCurrentTool),
     new CubicTool(stage, mgLeft, mgTop + ecart * 2, toolLineStyle, showCurrentTool),
     new RectTool(stage, mgLeft, mgTop + ecart * 3, toolFillStyle, toolLineStyle, showCurrentTool),
-    new CircleTool(stage, mgLeft, mgTop + ecart * 4,toolFillStyle, toolLineStyle, showCurrentTool),
+    new CircleTool(stage, mgLeft, mgTop + ecart * 4, toolFillStyle, toolLineStyle, showCurrentTool),
     new EllipseTool(stage, mgLeft, mgTop + ecart * 5, toolFillStyle, toolLineStyle, showCurrentTool),
     new PolylineTool(stage, mgLeft, mgTop + ecart * 6, toolLineStyle, showCurrentTool),
     new PolygonTool(stage, mgLeft, mgTop + ecart * 7, toolFillStyle, toolLineStyle, showCurrentTool)
 ];
-*/
 let btnLeft = 600, btnTop = 30, btnWidth = 100, btnHeight = 30;
 let cmds = ["Clear", "Line", "Curve", "Cubic", "Rect", "Circle", "Ellipse", "Polyline", "Polygon"];
 let frcmds = ["Effacer", "Ligne", "Courbe 1pt", "Courbe 2pts", "Rectangle", "Cercle", "Ellipse", "Segments", "Polygone"];
 cmds.forEach((c, i) => new Button(stage, c, frcmds[i], btnLeft, btnTop + (btnHeight * i), btnWidth, btnHeight - 2, btnCmd));
-let numPad = [
-    "R°z -", "T_y -", "R°z +", "Del Pt",
+let numPad = ["", "/ Scale-", "* Scale+", "- Del Pt",
+    "R°z -", "T_y -", "R°z +", "+ Add Pt",
     "T_x -", "", "T_x +", "Add Pt",
-    "Prev", "T_y +", "Next", ""
-];
+    "Prev", "T_y +", "Next", ""];
 numPad.forEach((c, i) => new Button(stage, c, c, btnLeft + 110 + (i % 4 * 60), btnTop + Math.floor(i / 4) * 50, 55, 35, onNumPad));
 function onNumPad(b) {
     let p = currentTool;
     if (!(p instanceof PolygonTool))
         return;
     switch (b.name) {
+        case "/ Scale-":
+            p.scaleNodes(1.00 - (1.00 / 10.00));
+            break;
+        case "* Scale+":
+            p.scaleNodes(1.00 + (1.00 / 10.00));
+            break;
         case "R°z -":
             p.rotateNodes(-5);
             break;
@@ -51,7 +54,7 @@ function onNumPad(b) {
         case "R°z +":
             p.rotateNodes(5);
             break;
-        case "Del Pt":
+        case "- Del Pt":
             p.delCurrNode();
             break;
         case "T_x -":
@@ -60,7 +63,7 @@ function onNumPad(b) {
         case "T_x +":
             p.translateNodes(5, 0);
             break;
-        case "Add Pt":
+        case "+ Add Pt":
             p.createNode();
             break;
         case "Prev":

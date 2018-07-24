@@ -18,7 +18,7 @@ let currentTool: Tool;
 let draw: Tool[] = [];
 let tools: Tool[];
 
-/*
+
 const mgLeft = grid.x - 75, mgTop = grid.y, ecart = 70;
 tools = [
     new LineTool(stage, mgLeft, mgTop + ecart * 0, toolLineStyle, showCurrentTool),
@@ -30,15 +30,14 @@ tools = [
     new PolylineTool(stage, mgLeft, mgTop + ecart * 6, toolLineStyle, showCurrentTool),
     new PolygonTool(stage, mgLeft, mgTop + ecart * 7, toolFillStyle, toolLineStyle, showCurrentTool)
 ];
-*/
 
 let btnLeft = 600, btnTop = 30, btnWidth = 100, btnHeight = 30;
 let cmds = ["Clear", "Line", "Curve", "Cubic", "Rect", "Circle", "Ellipse", "Polyline", "Polygon"];
 let frcmds = ["Effacer", "Ligne", "Courbe 1pt", "Courbe 2pts", "Rectangle", "Cercle", "Ellipse", "Segments", "Polygone"];
 cmds.forEach((c, i) => new Button(stage, c, frcmds[i], btnLeft, btnTop + (btnHeight * i), btnWidth, btnHeight - 2, btnCmd));
 
-let numPad = [
-    "R°z -",     "T_y -",  "R°z +",  "Del Pt",
+let numPad = ["", "/ Scale-","* Scale+","- Del Pt",
+    "R°z -",     "T_y -",  "R°z +",  "+ Add Pt",
     "T_x -",     "" ,  "T_x +", "Add Pt",
     "Prev",     "T_y +",  "Next",   ""]   
 numPad.forEach((c, i) =>
@@ -49,13 +48,15 @@ function onNumPad(b: Button) {
     if (!(p instanceof PolygonTool)) return;
 
     switch (b.name) {
+        case "/ Scale-": p.scaleNodes(1.00-(1.00/10.00)); break;
+        case "* Scale+": p.scaleNodes(1.00+(1.00/10.00)); break;
         case "R°z -": p.rotateNodes(-5) ; break;
         case "T_y -": p.translateNodes(0, -5) ;break;
         case "R°z +": p.rotateNodes(5) ;break;
-        case "Del Pt": p.delCurrNode(); break;
+        case "- Del Pt": p.delCurrNode(); break;
         case "T_x -": p.translateNodes(-5, 0);break;
         case "T_x +": p.translateNodes(5, 0); break;
-        case "Add Pt":p.createNode(); break;
+        case "+ Add Pt":p.createNode(); break;
         case "Prev": p.choosePrev(); break;
         case "T_y +": p.translateNodes(0, 5); break;
         case "Next": p.chooseNext(); break;

@@ -451,10 +451,10 @@ class Tool extends SpriteNode {
         let t = s as Tool;
         if (!t.selected) return;
         switch (k.key) {
-            case "ArrowUp": s.y--; break;
-            case "ArrowDown": s.y++; break;
-            case "ArrowLeft": s.x--; break;
-            case "ArrowRight": s.x++; break;
+            case "ArrowUp": t.y--; break;
+            case "ArrowDown": t.y++; break;
+            case "ArrowLeft": t.x--; break;
+            case "ArrowRight": t.x++; break;
         }
     }
     get selected(): boolean {
@@ -607,16 +607,18 @@ class PolygonTool extends Tool {
         k.stopPropagation();
         k.stopImmediatePropagation();
         switch (k.key) {
-            case "4": p.currNode.x--; break;
-            case "6": p.currNode.x++; break;
-            case "8": p.currNode.y--; break;
-            case "2": p.currNode.y++; break;
-            case "9": p.rotateNodes(1)  ; break; 
-            case "7": p.rotateNodes(-1) ; break; 
-            case "1": p.choosePrev(); break;
-            case "3": p.chooseNext(); break;
+            case "*": p.scaleNodes(1.1); break;
+            case "/": p.scaleNodes(0.9); break;
             case "-": p.delCurrNode();  break;
-            case "+": p.createNode(); break;
+            case "+": p.createNode(); break;            
+            case "7": p.rotateNodes(-1); break; 
+            case "8": p.translateNodes(0,-1); break;
+            case "9": p.rotateNodes(1); break;
+            case "4": p.translateNodes(-1,0); break;
+            case "6": p.translateNodes(1,0); break;
+            case "1": p.choosePrev(); break;
+            case "2": p.translateNodes(0, 1); break;
+            case "3": p.chooseNext(); break;
         }
         p.onMobile(p.currNode);
     }
