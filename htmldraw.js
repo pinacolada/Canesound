@@ -1,0 +1,34 @@
+"use strict";
+const stage = new Stage(document.body);
+const toolLineStyle = new Stroke(2, 0xFFFF00);
+const toolFillStyle = new Fill(0x336699, 0.5);
+stage.stageWidth = 1024;
+stage.stageHeight = 800;
+stage.backgroundColor = 0x666699;
+let grille = new Grid(stage, "grille", 300, 30, 600, 600);
+grille.drawGrid(24, 24, 0x00ffff, "Calibri", 10, 0x003333, -9, -2);
+let carre = new Sprite("carré", 315, 45, 120, 120);
+stage.addChild(carre);
+let gr = carre.graphics;
+gr.lineStyle(4, 0x009999, 1);
+gr.beginFill(0x990000, 1.0);
+gr.drawRect(0, 0, 120, 120);
+gr.lineStyle(2, 0xffff00, 1);
+gr.line(5, 5, 115, 115);
+gr.line(115, 5, 5, 115);
+carre.mobile(null, true, "pointer");
+carre.lim = new Rectangle(300, 30, 600, 600);
+const mgLeft = grille.x - 100, mgTop = grille.y, ecart = 80;
+new LineTool(stage, mgLeft, mgTop + ecart * 0, toolLineStyle, afficher);
+new CurveTool(stage, mgLeft, mgTop + ecart * 1, toolLineStyle, afficher);
+new CubicTool(stage, mgLeft, mgTop + ecart * 2, toolLineStyle, afficher);
+new RectTool(stage, mgLeft, mgTop + ecart * 3, toolFillStyle, toolLineStyle, afficher);
+new EllipseTool(stage, mgLeft, mgTop + ecart * 4, toolFillStyle, toolLineStyle, afficher);
+new PolylineTool(stage, mgLeft, mgTop + ecart * 5, toolLineStyle, afficher);
+new PolygonTool(stage, mgLeft, mgTop + ecart * 6, toolFillStyle, toolLineStyle, afficher);
+function afficher(p) {
+    let pt = p.pts, last = pt.length - 1;
+    let p0 = new Point(0, 0);
+    let pn = pt[last];
+    console.log(p.name, p0.toString(), pn.toString(), p0.distance(pn), p0.angleDegres(pn).toFixed(0));
+}
