@@ -67,6 +67,7 @@ class Graphics {
         this.clear();
     }
     applyTo(ctx: CanvasRenderingContext2D, tr: Point) {
+        if(this.obj.visible==false) this.commands=[];
         for (let c of this.commands) {
             let pt = c.pts;
             let [x0, y0, p1, p2, p3] = [tr.x + pt[0].x, tr.y + pt[0].y, pt[1], pt[2], pt[3]];

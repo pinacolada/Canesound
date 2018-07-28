@@ -159,8 +159,7 @@ class Shape extends DisplayObject {
         this.graphics = new Graphics(this);
     }
     render(ctx: CanvasRenderingContext2D) {
-        if (!this.visible) return;
-        this.graphics.applyTo(ctx, this.transform.stage);
+        if(this.visible) this.graphics.applyTo(ctx, this.transform.stage);
     }
 }
 class Sprite extends DisplayObjectContainer {
@@ -179,9 +178,10 @@ class Sprite extends DisplayObjectContainer {
         new GrCmd(this.graphics, 11, new Point(x, y)).write(text, fmt);
     }
     render(ctx: CanvasRenderingContext2D) {
-        if (!this.visible) return;
-        this.graphics.applyTo(ctx, this.transform.stage);
-        for (let c of this.children) c.render(ctx);
+        if(this.visible){
+            this.graphics.applyTo(ctx, this.transform.stage);
+            for (let c of this.children) c.render(ctx);            
+        }
     }
 }
 class RollPower {
@@ -236,7 +236,6 @@ class DragPower {
             s.addEventListener("mousedown", startDrag);
             if (callback) callback(s, "endDrag");
         }
-        
         function resetCursor(s: any, msg: string) {
             if (msg === "out") {
                 s.removeEventListener("mousemove", drag);
@@ -265,7 +264,7 @@ class Stage extends DisplayObjectContainer {
     bg: number = 0;
     graphics: Graphics;
     stageX: number = 0;
-    stageY: number = 0
+    stageY: number = 0;
     constructor(target: HTMLElement) {
         super();
         this.underMouse = [];
@@ -607,9 +606,9 @@ class PolygonTool extends Tool {
         k.stopPropagation();
         k.stopImmediatePropagation();
         switch (k.key) {
-            case "*": p.scaleNodes(1.1); break;
-            case "/": p.scaleNodes(0.9); break;
-            case "-": p.delCurrNode();  break;
+            case "*": p.transform.size.x+=0.1; p.scaleNodes(p.transform.size.x); break;
+            case "/": p.transform.size.x -= 0.1; p.scaleNodes(p.transform.size.x); break;
+            case "-": p.delCurrNode(); break;
             case "+": p.createNode(); break;            
             case "7": p.rotateNodes(-1); break; 
             case "8": p.translateNodes(0,-1); break;

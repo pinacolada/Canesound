@@ -47,7 +47,7 @@ class Point {
     * @param pt1 premier point 
     * @param pt2 second point
     */
-    static distance(pt1: Point, pt2: Point): number {
+    static Distance(pt1: Point, pt2: Point): number {
         let x = pt1.x - pt2.x, y = pt1.y - pt2.y;
         return Math.sqrt(x * x + y * y);
     }
@@ -57,7 +57,7 @@ class Point {
     * @param pt2  second point
     * @param f pourcentage entre 0 (premier point) et 1(second point)
     */
-    static interpolate(pt1: Point, pt2: Point, f: number): Point {
+    static Interpolate(pt1: Point, pt2: Point, f: number): Point {
         return new Point(pt2.x + (pt1.x - pt2.x) * f, pt2.y + (pt1.y - pt2.y) * f);
     }
     /**
@@ -65,7 +65,7 @@ class Point {
      * @param len   distance
      * @param rad   angle en radians
      */
-    static polar(len: number, rad: number): Point {
+    static Polar(len: number, rad: number): Point {
         return new Point(len * Math.cos(rad), len * Math.sin(rad));
     }
     /**
@@ -81,7 +81,7 @@ class Point {
      * @param y valeur verticale
      */
     add(x: number, y: number): Point {
-        return new Point(this.x + x, this.y + y)
+        return new Point(this.x + x, this.y + y);
     }
     /**
      * Crée un point résultant de l'addition de ce point et d'un autre
@@ -116,13 +116,13 @@ class Point {
      * @param p l'autre Point
      */
     distTo(p: Point): number {
-        return Point.distance(this, p);
+        return Point.Distance(this, p);
     }
     interpolTo(p: Point, pourcent: number): Point {
-        return Point.interpolate(this, p, pourcent);
+        return Point.Interpolate(this, p, pourcent);
     }
     polarTo(len: number, rad: number): Point {
-        return Point.polar(len, rad).addPoint(this);
+        return Point.Polar(len, rad).addPoint(this);
     }
     rotateSelf(radians: number) {
         const sin_a = Math.sin(radians), cos_a = Math.cos(radians);

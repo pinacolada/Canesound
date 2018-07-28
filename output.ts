@@ -8,6 +8,7 @@ stage.stageHeight = 800;
 stage.backgroundColor = 0x666699;
 
 const grid = new Grid(stage, "grille", 100, 30, 16 * 30, 16 * 30);
+grid.visible = false;// bug !?
 grid.drawGrid(16, 16, 0x00ffff, "Calibri", 10, 0x003333, -9, -2);
 
 let rot = new HSlider(stage, "Rotation", grid.x, grid.b + 5, grid.w, 30, true);
@@ -17,7 +18,6 @@ let transY = new VSlider(stage, "Trans Y", grid.r + 5, grid.b - 100, 20, 100, fa
 let currentTool: Tool;
 let draw: Tool[] = [];
 let tools: Tool[];
-
 
 const mgLeft = grid.x - 75, mgTop = grid.y, ecart = 70;
 tools = [
@@ -38,8 +38,8 @@ cmds.forEach((c, i) => new Button(stage, c, frcmds[i], btnLeft, btnTop + (btnHei
 
 let numPad = ["", "/ Scale-","* Scale+","- Del Pt",
     "R°z -",     "T_y -",  "R°z +",  "+ Add Pt",
-    "T_x -",     "" ,  "T_x +", "Add Pt",
-    "Prev",     "T_y +",  "Next",   ""]   
+    "T_x -",     "__" ,  "T_x +", "+ Add Pt",
+    "Prev",     "T_y +",  "Next",   "__"]   
 numPad.forEach((c, i) =>
     new Button(stage, c, c, btnLeft + 110 + (i % 4 * 60), btnTop + Math.floor(i / 4) * 50, 55, 35, onNumPad));
 
