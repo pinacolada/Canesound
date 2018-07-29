@@ -5,8 +5,8 @@
 // ******************************************************************************************************************************************************************************************************
 
 const MIN = Math.min, MAX = Math.max, PI = Math.PI;
-const enRadians = (degres: number) => PI * degres / 180;
-const enDegres = (radians: number) => {let d = 180 * radians / PI; return d > 0 ? d : d + 360 };
+const RAD = (degres: number):number => PI * degres / 180;
+const DEG = (radians: number):number => {let d = 180 * radians / PI; return d > 0 ? d : d + 360 };
 
 class Color {
     constructor(public val: number = 0, public alpha: number = 1.0) {
@@ -14,8 +14,12 @@ class Color {
     static FromCss(csstext: string | null): Color {
         csstext = csstext || "rgba(0,0,0,1)";
         let [r, g, b] = csstext.split("(")[1].split(",").map(t => parseInt(t));
-        return new Color(r << 16 | g << 8 | b, 1);
+        return Color.FromRgba(r,g,b,1);
     }
+    static FromRgba(r:number, g:number, b:number, alpha:number = 1.0) {
+        return new Color(r << 16 | g << 8 | b, alpha);
+    }
+
     get css(): string {
         return "rgba(" + this.rgba.join(",") + ")";
     }
@@ -143,7 +147,7 @@ class Point {
      * @param p l'autre Point
      */
     angleDegres(p: Point) {
-        return enDegres(this.angleRadians(p));
+        return DEG(this.angleRadians(p));
     }
     toString() {
         return "(x:" + this.x + "-y:" + this.y + ")";
@@ -183,7 +187,7 @@ class Rectangle extends Point {
     containsRec(alt: Rectangle): boolean {
         return this.containsPt(alt.topLeft) && this.containsPt(alt.bottomRight);
     }
-    intersects(alt: Rectangle) {
+    intersects(alt: Rectangle):boolean {
         if (MAX(this.x, alt.x) < MIN(this.r, alt.r)) return false;
         return (MAX(this.y, alt.y) >= MIN(this.b, alt.b));
     }
@@ -193,10 +197,9 @@ class Rectangle extends Point {
         return new Rectangle(mi.x, mi.y, ma.x - mi.x, ma.y - mi.y);
     }
 }
-
 class Transform {
     _stageRect = new Rectangle();
-    size: Point = new Point(1, 1);
+    sz: number =1.0;
     constructor(public obj: DisplayObject) { }
     get stageRect(): Rectangle {
         this.findStage();
@@ -210,13 +213,11 @@ class Transform {
         return this._stageRect.topLeft;
     }
     findStage() {
-        let o = this.obj;
+        let o:DisplayObjectContainer|null = this.obj as DisplayObjectContainer;
         this._stageRect.setRect(o.x, o.y, o.w, o.h);
-        let previous = o.parent;
-        while (previous != null && previous != o.stage) {
-            this._stageRect.addSelf(previous.x, previous.y);
-            previous = previous.parent;
-        }
+        while(o = o.parent) {
+            this._stageRect.addSelf(o.x, o.y);
+        } 
     }
 }
 

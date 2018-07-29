@@ -9,10 +9,10 @@ class DisplayObject extends Rectangle {
     stage: Stage | null = null;
     _parent: DisplayObjectContainer | null = null;
     visible: boolean = true;
-    transform: Transform;
+    trans: Transform;
     constructor(x: number = 0, y: number = 0) {
         super(x, y, 0, 0);
-        this.transform = new Transform(this);
+        this.trans = new Transform(this);
     }
     animate(property: string, changeValue: number, max: number, repeat?: Function | null, done?: Function | null) {
         let c = this;
@@ -42,10 +42,10 @@ class DisplayObject extends Rectangle {
         return new Rectangle(this.x, this.y, this.w, this.h);
     }
     get mouseX() {
-        return (this.stage != null ? this.stage.stageX - this.transform.stage.x : 0);
+        return (this.stage != null ? this.stage.stageX - this.trans.stage.x : 0);
     }
     get mouseY() {
-        return (this.stage != null ? this.stage.stageY - this.transform.stage.y : 0);
+        return (this.stage != null ? this.stage.stageY - this.trans.stage.y : 0);
     }
     get parent(): DisplayObjectContainer | null {
         return this._parent;
@@ -159,7 +159,7 @@ class Shape extends DisplayObject {
         this.graphics = new Graphics(this);
     }
     render(ctx: CanvasRenderingContext2D) {
-        if(this.visible) this.graphics.applyTo(ctx, this.transform.stage);
+        if (this.visible) this.graphics.applyTo(ctx, this.trans.stage);
     }
 }
 class Sprite extends DisplayObjectContainer {
@@ -178,18 +178,18 @@ class Sprite extends DisplayObjectContainer {
         new GrCmd(this.graphics, 11, new Point(x, y)).write(text, fmt);
     }
     render(ctx: CanvasRenderingContext2D) {
-        if(this.visible){
-            this.graphics.applyTo(ctx, this.transform.stage);
-            for (let c of this.children) c.render(ctx);            
+        if (this.visible) {
+            this.graphics.applyTo(ctx, this.trans.stage);
+            for (let c of this.children) c.render(ctx);
         }
     }
 }
 class RollPower {
-    constructor(s: InteractiveObject, callback: (i: DisplayObject, s: string) => void, rollOverCursor: string = "pointer") {
+    constructor(s: InteractiveObject, callback: (i: DisplayObject, s: string) => void, cursorType: string = "pointer") {
         s.addEventListener("mouseover", () => {
-            (s.stage as Stage).css.cursor = rollOverCursor;
+            (s.stage as Stage).css.cursor = cursorType;
             callback(s, "over");
-        })
+        });
         s.addEventListener("mouseout", () => {
             (s.stage as Stage).css.cursor = "auto";
             callback(s, "out")
@@ -208,33 +208,48 @@ class KeyDownPower {
         s.addEventListener("keydown", (s: InteractiveObject, t: string, k: KeyboardEvent) => callback(s, k))
     }
 }
+class MovePower {
+    constructor(public s: Sprite, public callback: (s: Sprite, x: number, y: number) => void, cursorType: string) {
+        const stage = s.stage as Stage
+        new RollPower(s, resetCursor, cursorType);
+        function move() {
+            callback(s, stage.stageX, stage.stageY);
+        }
+        function resetCursor(s: any, msg: string) {
+            if (msg === "out") {
+                s.removeEventListener("mousemove", move);
+            } else {
+                s.addEventListener("mousemove", move);
+            }
+        }
+    }
+}
 class DragPower {
-    constructor(public s: Sprite, public lim: Rectangle|null, public callback: (s: Sprite, msg:string)=>void|Function, public dragCursor: string = "move") {
+    constructor(public s: Sprite, public lim: Rectangle | null, public callback: (s: Sprite, msg: string) => void | Function, public dragCursor: string = "move") {
         let hit = new Point(), stage = s.stage as Stage;
-        new RollPower(s, resetCursor, "move");
-
+        new RollPower(s, resetCursor, dragCursor);
         function startDrag() {
             hit.setPos(stage.stageX - s.x, stage.stageY - s.y);
             stage.css.cursor = dragCursor;
             s.removeEventListener("mousedown", startDrag);
             s.addEventListener("mouseup", stopDrag);
             s.addEventListener("mousemove", drag);
-            if (callback) callback(s, "startDrag");
+            callback(s, "startDrag");
             drag();
         }
         function drag() {
             s.setPos(stage.stageX - hit.x, stage.stageY - hit.y);
             if (lim) {
                 s.x = Math.min(Math.max(s.x, lim.x), lim.r - s.w);
-                s.y = Math.min(Math.max(s.y, lim.y), lim.b - s.h);                
+                s.y = Math.min(Math.max(s.y, lim.y), lim.b - s.h);
             }
-            if (callback) callback(s, "drag");
+            callback(s, "drag");
         }
         function stopDrag() {
             s.removeEventListener("mousemove", drag);
             s.removeEventListener("mouseup", stopDrag);
             s.addEventListener("mousedown", startDrag);
-            if (callback) callback(s, "endDrag");
+            callback(s, "endDrag");
         }
         function resetCursor(s: any, msg: string) {
             if (msg === "out") {
@@ -245,12 +260,6 @@ class DragPower {
                 s.addEventListener("mousedown", startDrag);
             }
         }
-    }
-    setPower() {
-
-    }
-    removePower() {
-
     }
 }
 class Stage extends DisplayObjectContainer {
@@ -288,6 +297,7 @@ class Stage extends DisplayObjectContainer {
             this.underMouse.forEach((d) => d.dispatchEvent("click", m));
         });
         this.canvas.addEventListener("mousemove", m => {
+            if (m.pageX === this.stageX && m.pageY === this.stageY) return;
             this.stageX = m.pageX;
             this.stageY = m.pageY;
             this.children.forEach((d) => {
@@ -298,7 +308,7 @@ class Stage extends DisplayObjectContainer {
             })
         });
         function findChildUnderMouse(stage: Stage, d: InteractiveObject, m: MouseEvent) {
-            let index = stage.underMouse.indexOf(d), rect = d.transform.stageRect;
+            let index = stage.underMouse.indexOf(d), rect = d.trans.stageRect;
             if (rect.containsPos(stage.stageX, stage.stageY)) {
                 if (index == -1) {
                     stage.underMouse.push(d);
@@ -319,6 +329,10 @@ class Stage extends DisplayObjectContainer {
                 });
             }
         }
+    }
+    getPixel(x: number, y: number): Color {
+        let c = this.ctx.getImageData(x, y, 1, 1).data
+        return Color.FromRgba(c[0], c[1], c[2], c[3]);
     }
     render() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -356,13 +370,11 @@ class Grid extends Sprite {
         this.lines = new Shape();
         this.addChild(this.lines);
     }
-
     drawGrid(numRows: number, numCols: number, lineColor: number, fontName: string, fontSize: number, textColor: number, dx: number = 2, dy: number = 2) {
         let gr = this.lines.graphics;
         this.fmt.font = fontName;
         this.fmt.size = fontSize;
         this.fmt.color = textColor;
-
         gr.clear();
         gr.lineStyle(0.4, lineColor, 1);
         const hor = this.w / numCols;
@@ -378,289 +390,6 @@ class Grid extends Sprite {
             gr.line(0, py, this.w, py);
             this.write(dx, py + 2, r.toString(), this.fmt);
         }
-    }
-}
-class SpriteNode extends Sprite {
-    constructor(target: DisplayObjectContainer | Tool, id: string, x: number, y: number, public radius: number, bg: number, border: number, callback:any) {
-        super(id, x, y, radius * 2, radius * 2);
-        target.addChild(this);
-        this.setColor(bg, border);
-        if (target instanceof Tool) {
-            new DragPower(this, null, (e:InteractiveObject, m: string) =>  target.onMobile(e, m));
-        } else {
-            new DragPower(this, null, callback);
-        }
-    }
-    setColor(background: number, border: number) {
-        this.graphics.clear();
-        this.graphics.lineStyle(2, border, 1);
-        this.graphics.beginFill(background);
-        this.graphics.drawCircle(0, 0, this.radius);
-    }
-}
-class Tool extends SpriteNode {
-    curve: Shape;
-    /**
-     * largeur de l'outil de dessin
-     */
-    static SIZE = 50;
-    /**
-     * rayon de la poignée (handle radius)
-     */
-    static HR = 5;
-    pts: SpriteNode[] = [];
-    selArrow: Shape = new Shape(0, 0);
-    kdControl: KeyDownPower;
-    kuControl: KeyUpPower;
-    constructor(target: DisplayObjectContainer, toolType: string, x: number, y: number, public stroke: Stroke, public callback?:Function) {
-        super(target, toolType, x, y, Tool.HR, 0xFF0000, 0xFFFFFF, callback);
-        this.curve = new Shape(5, 5);
-        this.addChild(this.curve);
-        this.selArrow.graphics.beginFill(0xff00ff, 1);
-        this.selArrow.graphics.drawShape(new Point(-8, 0), new Point(-16, -8),
-            new Point(-8, -16), new Point(0, -8), new Point(0, 0))
-
-        this.kdControl = new KeyDownPower(this, this.moveTool);
-        this.kuControl = new KeyUpPower(this, this.moveTool);
-    }
-    rotateNodes(degres: number) {
-        let radians = enRadians(degres);
-        this.pts.forEach(p => p.rotateSelf(radians));
-        this.onMobile(this.pts[0], "rotated");
-    }
-    translateNodes(tx:number, ty:number) {
-        this.pts.forEach(p => p.addSelf(tx, ty));
-        this.onMobile(this.pts[0], "translated");
-    }
-    scaleNodes(factor: number) {
-        this.pts.forEach(p => p.scaleSelf(factor));
-        this.onMobile(this.pts[0], "scaled");
-    } 
-    addNode(id: string, x: number, y: number, radius: number, bg: number, bdr: number, push:boolean=true): SpriteNode {
-        let t: Tool = this;
-        let sn = new SpriteNode(t, id, x, y, radius, bg, bdr,
-            (n: SpriteNode, msg: string) => t.onMobile(n, msg));
-        if(push) t.pts.push(sn);
-        return sn;
-    }
-    onMobile(n: InteractiveObject, msg: string) {
-        // Dessin de l'outil terminé (implémenter pour les autres tools)
-    }
-    moveTool(s: InteractiveObject, k: KeyboardEvent) {
-        let t = s as Tool;
-        if (!t.selected) return;
-        switch (k.key) {
-            case "ArrowUp": t.y--; break;
-            case "ArrowDown": t.y++; break;
-            case "ArrowLeft": t.x--; break;
-            case "ArrowRight": t.x++; break;
-        }
-    }
-    get selected(): boolean {
-        return this.contains(this.selArrow);
-    }
-    set selected(value: boolean) {
-        if (value) {
-            this.addChild(this.selArrow);
-            this.pts.forEach(p=>p.visible=true);
-        } else {
-            this.removeChild(this.selArrow);
-            this.pts.forEach(p => p.visible = false);
-        }
-    }
-}
-class LineTool extends Tool {
-    sb: SpriteNode;
-    constructor(target: DisplayObjectContainer, x: number, y: number, stroke: Stroke, callback: Function) {
-        super(target, "Line", x, y, stroke, callback);
-        this.sb = this.addNode("b", Tool.SIZE, Tool.SIZE, Tool.HR, 0x00FF00, 0xFFFFFF);
-        this.onMobile(this.sb);
-    }
-    onMobile(n:SpriteNode, m:string="") {
-        const s = this.stroke, g = this.curve.graphics;
-        g.clear();
-        g.lineStyle(s.thickness, s.color, s.alpha);
-        g.line(0, 0, this.sb.x, this.sb.y);
-        if (this.callback instanceof Function) this.callback(this);
-    }
-}
-class CurveTool extends Tool {
-    sb: SpriteNode;
-    sc: SpriteNode;
-    constructor(target: DisplayObjectContainer, x: number, y: number, stroke: Stroke, callback: Function) {
-        super(target, "Curve", x, y, stroke, callback);
-        this.sb = this.addNode("b", Tool.SIZE, 0, Tool.HR, 0x0000FF, 0x999999);
-        this.sc = this.addNode("c", 0, Tool.SIZE, Tool.HR, 0x00FF00, 0xFFFFFF);
-        this.onMobile(this.sc);
-    }
-    onMobile(n:SpriteNode, m:string="") {
-        const s = this.stroke, g = this.curve.graphics;
-        g.clear();
-        g.lineStyle(s.thickness, s.color, s.alpha);
-        g.curve(0, 0, this.sb.x, this.sb.y, this.sc.x, this.sc.y);
-        if (this.callback instanceof Function) this.callback(this);
-    }
-}
-class CubicTool extends Tool {
-    sb: SpriteNode;
-    sc: SpriteNode;
-    sd: SpriteNode;
-    constructor(target: DisplayObjectContainer, x: number, y: number, stroke: Stroke, callback?: Function) {
-        super(target, "Cubic", x, y, stroke, callback);
-        this.sb = this.addNode("b", Tool.SIZE, 0, Tool.HR, 0x0000FF, 0x999999);
-        this.sc = this.addNode("c", Tool.SIZE, Tool.SIZE, Tool.HR, 0x0000FF, 0x999999);
-        this.sd = this.addNode("d", 0, Tool.SIZE, Tool.HR, 0x00FF00, 0xFFFFFF);
-        this.onMobile(this.sd);
-    }
-    onMobile(n:SpriteNode, m:string="") {
-        const s = this.stroke, g = this.curve.graphics;
-        g.clear();
-        g.lineStyle(s.thickness, s.color, s.alpha);
-        g.cubicCurve(0, 0, this.sb.x, this.sb.y, this.sc.x, this.sc.y, this.sd.x, this.sd.y);
-        if (this.callback instanceof Function) this.callback(this);
-    }
-}
-class RectTool extends Tool {
-    sb: SpriteNode;
-    constructor(target: DisplayObjectContainer, x: number, y: number, public fill: Fill, stroke: Stroke, callback: Function) {
-        super(target, "Rect", x, y, stroke, callback);
-        this.sb = this.addNode("b", Tool.SIZE, Tool.SIZE, Tool.HR, 0x00FF00, 0xFFFFFF);
-        this.onMobile(this.sb);
-    }
-    onMobile(n:SpriteNode, m:string="") {
-        const s = this.stroke, f = this.fill, g = this.curve.graphics;
-        g.clear();
-        this.sb.x = MAX(this.sb.x, 10);
-        this.sb.y = MAX(this.sb.y, 10);
-        g.beginFill(f.color, f.alpha);
-        g.lineStyle(s.thickness, s.color, s.alpha);
-        g.drawRect(0, 0, this.sb.x, this.sb.y);
-        if (this.callback instanceof Function) this.callback(this);
-    }
-}
-class CircleTool extends Tool {
-    sb: SpriteNode;
-    constructor(target: DisplayObjectContainer, x: number, y: number, public fill: Fill, stroke: Stroke, callback: Function) {
-        super(target, "Circle", x, y, stroke, callback);
-        this.sb = this.addNode("b", Tool.SIZE, Tool.SIZE, Tool.HR, 0x00FF00, 0xFFFFFF);
-        this.onMobile(this.sb);
-    }
-    onMobile(sn:SpriteNode, msg:string="") {
-        const s = this.stroke, f = this.fill, g = this.curve.graphics;
-        g.clear();
-        this.sb.x = MAX(this.sb.x, 10);
-        this.sb.y = MAX(this.sb.y, 10);
-        g.beginFill(f.color, f.alpha);
-        g.lineStyle(s.thickness, s.color, s.alpha);
-        g.drawCircle(0, 0, this.sb.x / 2);
-        if (msg == "endDrag") this.sb.y = this.sb.x;
-        if (this.callback instanceof Function) this.callback(this);
-    }
-}
-class EllipseTool extends Tool {
-    sb: SpriteNode;
-    constructor(target: DisplayObjectContainer, x: number, y: number, public fill: Fill, stroke: Stroke, callback: Function) {
-        super(target, "Ellipse", x, y, stroke, callback);
-        this.sb = this.addNode("b", Tool.SIZE * 1, Tool.SIZE * 0.7, Tool.HR, 0x00FF00, 0xFFFFFF);
-        this.onMobile(this.sb);
-    }
-    onMobile(sn:SpriteNode, msg:string="") {
-        const s = this.stroke, f = this.fill, g = this.curve.graphics;
-        this.sb.x = MAX(this.sb.x, 10);
-        this.sb.y = MAX(this.sb.y, 10);
-        g.clear();
-        g.beginFill(f.color, f.alpha);
-        g.lineStyle(s.thickness, s.color, s.alpha);
-        g.drawEllipse(0, 0, this.sb.x / 2, this.sb.y / 2);
-        if (this.callback instanceof Function) this.callback(this);
-    }
-}
-class PolygonTool extends Tool {
-    currentIndex: number = 1;
-    constructor(target: DisplayObjectContainer, x: number, y: number, public fill: Fill, stroke: Stroke, callback: Function) {
-        super(target, (fill.color == -1 ? "Polyline" : "Polygon"), x, y, stroke, callback);
-        let pts = [new Point(Tool.SIZE, 0), new Point(Tool.SIZE, Tool.SIZE), new Point(Tool.SIZE / 2, Tool.SIZE / 2), new Point(0, Tool.SIZE)];
-        for (let p of pts) this.createSpriteNode(p);
-        this.onMobile(this.pts[this.last]);
-        new KeyDownPower(this, this.onKeyboard);
-    }
-    onMobile(sn:SpriteNode, msg:string="") {
-        const s = this.stroke, f = this.fill, g = this.curve.graphics;
-        g.clear();
-        g.beginFill(f.color, f.alpha);
-        g.lineStyle(s.thickness, s.color, s.alpha);
-        g.drawShape(new Point(0, 0), ...this.pts);
-        this.currNode = sn;
-        if (this.callback instanceof Function) this.callback(this);
-    }
-    createSpriteNode(p: Point): SpriteNode {
-        let n = this.addNode("n_", p.x, p.y, Tool.HR, 0x999999, 0xffffff, false);
-        this.pts.splice(this.currentIndex + 1, 0, n);
-        this.currNode = n;
-        return n;
-    }
-    onKeyboard(i: InteractiveObject, k: KeyboardEvent) {
-        let p = i as PolygonTool;
-        if (!p.selected) return;
-        k.preventDefault();
-        k.stopPropagation();
-        k.stopImmediatePropagation();
-        switch (k.key) {
-            case "*": p.transform.size.x+=0.1; p.scaleNodes(p.transform.size.x); break;
-            case "/": p.transform.size.x -= 0.1; p.scaleNodes(p.transform.size.x); break;
-            case "-": p.delCurrNode(); break;
-            case "+": p.createNode(); break;            
-            case "7": p.rotateNodes(-1); break; 
-            case "8": p.translateNodes(0,-1); break;
-            case "9": p.rotateNodes(1); break;
-            case "4": p.translateNodes(-1,0); break;
-            case "6": p.translateNodes(1,0); break;
-            case "1": p.choosePrev(); break;
-            case "2": p.translateNodes(0, 1); break;
-            case "3": p.chooseNext(); break;
-        }
-        p.onMobile(p.currNode);
-    }
-    choosePrev() {
-        if (this.currentIndex > 0) this.currNode = this.pts[this.currentIndex -1];
-    }
-    chooseNext() {
-        if (this.currentIndex < this.last) this.currNode = this.pts[this.currentIndex+1];
-    }
-    createNode() {
-        let index = this.currentIndex;
-        if (index < this.last) {
-            this.createSpriteNode(this.currNode.interpolTo(this.pts[index + 1], 0.5));
-        } else {
-            this.createSpriteNode(this.currNode.interpolTo(new Point(0, 0), 0.5));
-        } 
-    }
-    delCurrNode() {
-        let index = this.currentIndex;
-        if (this.pts.length > 1) {
-            this.currNode.remove();
-            this.pts.splice(index, 1);
-            this.currNode = this.pts[MIN(index, this.last)];
-        }
-        this.onMobile(this.currNode);
-    }
-    get currNode() {
-        return this.pts[this.currentIndex];
-    }
-    set currNode(value: SpriteNode) {
-        let prev = this.currNode;
-        // if (prev === value) return;
-        if (prev != null) prev.setColor(0x999999, 0xffffff);// gris ancien
-        this.currentIndex = this.pts.indexOf(value);
-        this.currNode.setColor(0xFFFF00, 0xffff00);// jaune nouveau
-    }
-    get last() {
-        return this.pts.length - 1;
-    }
-}
-class PolylineTool extends PolygonTool {
-    constructor(target: DisplayObjectContainer, x: number, y: number, stroke: Stroke, callback: Function) {
-        super(target, x, y, new Fill(-1), stroke, callback);// couleur -1 = pas de remplissage...
     }
 }
 class Button extends Sprite {
@@ -688,21 +417,21 @@ class Button extends Sprite {
 class HSlider extends Sprite {
     curs: Sprite;
     cursSize: number = 0.15;
-    constructor(target: DisplayObjectContainer, name: string, x: number, y: number, w: number, h: number, public showVal:boolean) {
+    constructor(target: DisplayObjectContainer, name: string, x: number, y: number, w: number, h: number, public showVal: boolean) {
         super(name, x, y, w, h);
         this.graphics.drawBox(0, 0, w, h, false, 0x555599, 1.0);// creux, plus sombre que scène
         target.addChild(this);
         let curs: Sprite = new Sprite("curs", 0, 0, this.cursSize * w, h);
         this.addChild(curs);
-        new DragPower(curs, new Rectangle(0, 0, this.w, this.h), () => this._draw(),"pointer");
+        new DragPower(curs, new Rectangle(0, 0, this.w, this.h), () => this._draw(), "pointer");
         this.curs = curs;
         this.pourcent = 0.5;
     }
     _draw() {
         let curs = this.curs, h = this.h, w = this.w, v = this.pourcent * 100;
         curs.graphics.clear();
-        curs.graphics.drawBox(1, 1, curs.w-2, h - 2, true, 0x666699);// bombé, plus clair que scène
-        if(this.showVal) curs.write(curs.w / 2, (h / 2) + 4, v.toFixed(0) + "%", GlobalFormat);
+        curs.graphics.drawBox(1, 1, curs.w - 2, h - 2, true, 0x666699);// bombé, plus clair que scène
+        if (this.showVal) curs.write(curs.w / 2, (h / 2) + 4, v.toFixed(0) + "%", GlobalFormat);
     }
     get pourcent(): number {
         return this.curs.x / (this.w - this.curs.w);
@@ -717,21 +446,21 @@ class HSlider extends Sprite {
 class VSlider extends Sprite {
     curs: Sprite;
     cursSize: number = 0.25;
-    constructor(target: DisplayObjectContainer, name: string, x: number, y: number, w: number, h: number, public showVal:boolean) {
+    constructor(target: DisplayObjectContainer, name: string, x: number, y: number, w: number, h: number, public showVal: boolean) {
         super(name, x, y, w, h);
         this.graphics.drawBox(0, 0, w, h, false, 0x555599, 1.0);
         target.addChild(this);
-        let curs: Sprite = new Sprite("curs", 0, 0, w, this.cursSize*h);
+        let curs: Sprite = new Sprite("curs", 0, 0, w, this.cursSize * h);
         this.addChild(curs);
-        new DragPower(curs,  new Rectangle(0, 0, this.w, this.h), () => this._draw(), "pointer");
+        new DragPower(curs, new Rectangle(0, 0, this.w, this.h), () => this._draw(), "pointer");
         this.curs = curs;
         this.pourcent = .5;
     }
     _draw() {
         let curs = this.curs, h = this.h, w = this.w, v = this.pourcent * 100;
         curs.graphics.clear();
-        curs.graphics.drawBox(1, 1, w - 2, curs.h-2, true, 0x777799);
-        if(this.showVal) curs.write(w / 2, (curs.h / 2) + 4, v.toFixed(0) + "%", GlobalFormat);
+        curs.graphics.drawBox(1, 1, w - 2, curs.h - 2, true, 0x777799);
+        if (this.showVal) curs.write(w / 2, (curs.h / 2) + 4, v.toFixed(0) + "%", GlobalFormat);
     }
     get pourcent(): number {
         return this.curs.y / (this.h - this.curs.h);
@@ -743,4 +472,50 @@ class VSlider extends Sprite {
         this._draw();
     }
 }
+class ColorSelector extends Sprite {
+    over: Color;
+    current: Color;
+    view: Shape;
+    select: Sprite;
+    constructor(target: DisplayObjectContainer, id: string, x: number, y: number, colr: number = 0x666666) {
+        super(id, x, y, 300, 200);
+        target.addChild(this);
+        const c = 12, col = ["00", "33", "66", "99", "CC", "FF"];
+        this.graphics.drawBox(0, 0, c*24, c*14, true, 0x9999FF, 1);
+        this.current = this.over = new Color(colr);
+        
+        this.view = new Shape(c*20, c);
+        this.addChild(this.view);
+        
+        this.select = new Sprite("select", c, c, c * 18, c * 12);
+        this.addChild(this.select);
 
+        const stage = this.stage as Stage, gr = this.select.graphics;
+        let px = 0, py = 0, nc = 0, t = "";
+        for (let r = 0; r < 6; r++) {
+            for (let g = 0; g < 6; g++) {
+                for (let b = 0; b < 6; b++) {
+                    t = col[r] + col[g] + col[b];
+                    gr.beginFill(parseInt(t, 16), 1);
+                    gr.drawRect(px, py, c, c);
+                    px += c, nc++; if (nc == 18) nc = 0, px = 0, py += c;
+                }
+            }
+        }
+        new RollPower(this.select, ()=>{},"crosshair");
+
+        this.select.addEventListener("mousemove", () => {
+            this.over = stage.getPixel(stage.stageX, stage.stageY), this.show(c)});
+
+        this.select.addEventListener("click", () => { 
+            this.current = this.over, this.show(c)});
+
+        this.show(c);
+    }
+    show(c:number) {
+        const gr = this.view.graphics;
+        gr.clear();
+        gr.drawBox(0, 0, c*3, c*2, true, this.over.val, 1);
+        gr.drawBox(0, c*3, c*3, c*2, false, this.current.val, 1);
+    }
+}

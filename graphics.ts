@@ -184,7 +184,6 @@ class Graphics {
         new GrCmd(this, 10, ...pts);
     }
     drawBox(x: number, y: number, w: number, h: number, up: boolean = true, bgColor: number, bgAlpha: number = 1.0) {
-        this.clear();
         let [topLeft, topRight, bottomRight, bottomLeft] = [
             new Point(x, y),
             new Point(x + w, y),

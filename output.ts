@@ -8,12 +8,12 @@ stage.stageHeight = 800;
 stage.backgroundColor = 0x666699;
 
 const grid = new Grid(stage, "grille", 100, 30, 16 * 30, 16 * 30);
-grid.visible = false;// bug !?
 grid.drawGrid(16, 16, 0x00ffff, "Calibri", 10, 0x003333, -9, -2);
 
-let rot = new HSlider(stage, "Rotation", grid.x, grid.b + 5, grid.w, 30, true);
-let transX = new HSlider(stage, "Trans X", grid.r + 35, grid.b-20, 100, 20, false);
-let transY = new VSlider(stage, "Trans Y", grid.r + 5, grid.b - 100, 20, 100, false);
+
+// let rot = new HSlider(stage, "Rotation", grid.x, grid.b + 5, grid.w, 30, true);
+// let transX = new HSlider(stage, "Trans X", grid.r + 35, grid.b-20, 100, 20, false);
+// let transY = new VSlider(stage, "Trans Y", grid.r + 5, grid.b - 100, 20, 100, false);
 
 let currentTool: Tool;
 let draw: Tool[] = [];
@@ -31,6 +31,7 @@ tools = [
     new PolygonTool(stage, mgLeft, mgTop + ecart * 7, toolFillStyle, toolLineStyle, showCurrentTool)
 ];
 
+new ColorSelector(stage, "fillColor", grid.x, grid.b + 50);
 let btnLeft = 600, btnTop = 30, btnWidth = 100, btnHeight = 30;
 let cmds = ["Clear", "Line", "Curve", "Cubic", "Rect", "Circle", "Ellipse", "Polyline", "Polygon"];
 let frcmds = ["Effacer", "Ligne", "Courbe 1pt", "Courbe 2pts", "Rectangle", "Cercle", "Ellipse", "Segments", "Polygone"];
@@ -46,7 +47,6 @@ numPad.forEach((c, i) =>
 function onNumPad(b: Button) {
     let p = currentTool as PolygonTool;
     if (!(p instanceof PolygonTool)) return;
-
     switch (b.name) {
         case "/ Scale-": p.scaleNodes(1.00-(1.00/10.00)); break;
         case "* Scale+": p.scaleNodes(1.00+(1.00/10.00)); break;
@@ -85,7 +85,6 @@ function showCurrentTool(t: Tool) {
     currentTool.selected = true;
     // if (tools && tools.includes(currentTool)) return;
 }
-
 grid.addEventListener("click", () => addPointToGrid(grid));
 function addPointToGrid(g: Grid) {
     let stage = g.stage as Stage, tool = currentTool;
