@@ -19,7 +19,9 @@ class Color {
     static FromRgba(r:number, g:number, b:number, alpha:number = 1.0) {
         return new Color(r << 16 | g << 8 | b, alpha);
     }
-
+    get hex():string {
+        return [this.r,this.g,this.b].map(n=>("0"+n.toString(16)).substr(-2)).join("").toUpperCase();
+    }
     get css(): string {
         return "rgba(" + this.rgba.join(",") + ")";
     }
@@ -41,7 +43,6 @@ class Color {
 }
 class Point {
     constructor(public x: number = 0, public y: number = 0) { }
-
     setPos(x: number, y: number) { this.x = x; this.y = y; }
     polar(dist: number, angle: number): Point {
         return new Point(this.x + Math.cos(angle) * dist, this.y + Math.sin(angle) * dist);

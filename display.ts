@@ -392,11 +392,16 @@ class Grid extends Sprite {
         }
     }
 }
-class Button extends Sprite {
-    _txt: string = "";
-    constructor(target: DisplayObjectContainer, name: string, public title: string, x: number, y: number, w: number, h: number, callback: (b: Button) => void) {
-        super(name, x, y, w, h);
+class UiElement extends Sprite {
+    constructor(target:DisplayObjectContainer, name:string, x:number, y:number, w:number, h:number, callback:(e:UiElement)=>void) {
+        super(name, x, y, w, h)
         target.addChild(this);
+    }
+}
+class Button extends UiElement {
+    _txt: string = "";
+    constructor(target: DisplayObjectContainer, name: string, public title: string, x: number, y: number, w: number, h: number, callback: (e:UiElement) => void) {
+        super(target, name, x, y, w, h, callback);
         this.text = title;
         new RollPower(this, this.onMouse, "pointer");
         this.onMouse(this, "out");
@@ -414,42 +419,68 @@ class Button extends Sprite {
         this._txt = value;
     }
 }
-class HSlider extends Sprite {
+class HRange extends UiElement {
+        curs: Sprite;
+        constructor(target: DisplayObjectContainer, name: string, x: number, y: number, w:number, public callback: (s: UiElement) => void) {
+            super(target, name, x, y, w, 20, callback);
+            this.graphics.drawBox(0, 10, w, 2, false, 0x555599, 1.0);// creux, plus sombre que scène
+            let curs: Sprite = new Sprite("curs", 0, 0, 12, 20), gr = curs.graphics;
+            gr.drawBox(0, 0, 14, 20, true, 0x666699);
+            gr.line(3, 6, 11, 6);
+            gr.line(3, 10, 11, 10);
+            gr.line(3, 14, 11, 14);
+            this.addChild(curs);
+            new DragPower(curs, new Rectangle(0, 0, this.w, this.h), () => this.callback(this), "pointer");
+            this.curs = curs;
+            this.percent = 1.0;
+        }
+        get percent(): number {
+            return this.curs.x / (this.w - 14);
+        }
+        set percent(value: number) {
+            value = MIN(value, 1);
+            value = MAX(value, 0);
+            this.curs.x = value * (this.w - 14);
+            this.callback(this);
+        }
+}
+class HSlider extends UiElement {
     curs: Sprite;
-    cursSize: number = 0.15;
-    constructor(target: DisplayObjectContainer, name: string, x: number, y: number, w: number, h: number, public showVal: boolean) {
-        super(name, x, y, w, h);
+    cursSize: number = 0.25;
+    constructor(target: DisplayObjectContainer, name: string, x: number, y: number, w: number, h: number, public callback: (s: UiElement) => void, public showVal: boolean) {
+        super(target, name, x, y, w, h, callback);
         this.graphics.drawBox(0, 0, w, h, false, 0x555599, 1.0);// creux, plus sombre que scène
-        target.addChild(this);
         let curs: Sprite = new Sprite("curs", 0, 0, this.cursSize * w, h);
         this.addChild(curs);
         new DragPower(curs, new Rectangle(0, 0, this.w, this.h), () => this._draw(), "pointer");
         this.curs = curs;
-        this.pourcent = 0.5;
+        this.percent = 0.5;
     }
     _draw() {
-        let curs = this.curs, h = this.h, w = this.w, v = this.pourcent * 100;
+        let curs = this.curs, h = this.h, w = this.w, v = this.percent * 100;
+        curs.w = this.cursSize * w;
         curs.graphics.clear();
         curs.graphics.drawBox(1, 1, curs.w - 2, h - 2, true, 0x666699);// bombé, plus clair que scène
         if (this.showVal) curs.write(curs.w / 2, (h / 2) + 4, v.toFixed(0) + "%", GlobalFormat);
+        this.callback(this);
     }
-    get pourcent(): number {
+    get percent(): number {
         return this.curs.x / (this.w - this.curs.w);
     }
-    set pourcent(value: number) {
+    set percent(value: number) {
         value = MIN(value, 1);
         value = MAX(value, 0);
         this.curs.x = value * (this.w - this.curs.w);
         this._draw();
     }
 }
-class VSlider extends Sprite {
+
+class VSlider extends UiElement {
     curs: Sprite;
     cursSize: number = 0.25;
-    constructor(target: DisplayObjectContainer, name: string, x: number, y: number, w: number, h: number, public showVal: boolean) {
-        super(name, x, y, w, h);
+    constructor(target: DisplayObjectContainer, name: string, x: number, y: number, w: number, h: number, public callback: (s: UiElement) => void, public showVal: boolean) {
+        super(target, name, x, y, w, h, callback);
         this.graphics.drawBox(0, 0, w, h, false, 0x555599, 1.0);
-        target.addChild(this);
         let curs: Sprite = new Sprite("curs", 0, 0, w, this.cursSize * h);
         this.addChild(curs);
         new DragPower(curs, new Rectangle(0, 0, this.w, this.h), () => this._draw(), "pointer");
@@ -458,6 +489,7 @@ class VSlider extends Sprite {
     }
     _draw() {
         let curs = this.curs, h = this.h, w = this.w, v = this.pourcent * 100;
+        curs.h = this.cursSize * h;
         curs.graphics.clear();
         curs.graphics.drawBox(1, 1, w - 2, curs.h - 2, true, 0x777799);
         if (this.showVal) curs.write(w / 2, (curs.h / 2) + 4, v.toFixed(0) + "%", GlobalFormat);
@@ -472,23 +504,28 @@ class VSlider extends Sprite {
         this._draw();
     }
 }
-class ColorSelector extends Sprite {
-    over: Color;
-    current: Color;
+class ColorSelector extends UiElement {
+    overColor: Color;
+    selectedColor: Color;
     view: Shape;
     select: Sprite;
-    constructor(target: DisplayObjectContainer, id: string, x: number, y: number, colr: number = 0x666666) {
-        super(id, x, y, 300, 200);
-        target.addChild(this);
+    alpha: number = 1.0;
+    fill:Fill = new Fill();
+    stroke:Stroke = new Stroke();
+
+    constructor(target: DisplayObjectContainer, name: string, x: number, y: number, public callback:(e:UiElement)=>void, colr: number = 0x666666) {
+        super(target, name, x, y, 300, 200, callback);
         const c = 12, col = ["00", "33", "66", "99", "CC", "FF"];
-        this.graphics.drawBox(0, 0, c*24, c*14, true, 0x9999FF, 1);
-        this.current = this.over = new Color(colr);
-        
-        this.view = new Shape(c*20, c);
+        this.graphics.drawBox(0, 0, this.w, this.h, true, 0x9999FF, 1);
+        this.selectedColor = this.overColor = new Color(colr);
+        this.view = new Shape(240, 12);
         this.addChild(this.view);
-        
         this.select = new Sprite("select", c, c, c * 18, c * 12);
         this.addChild(this.select);
+        let alphaSlid = new HRange(this, "alpha", 240, c * 11, 50, (al:UiElement)=>{
+            this.alpha = (al as HRange).percent;
+        });
+        alphaSlid.percent = 1.0;
 
         const stage = this.stage as Stage, gr = this.select.graphics;
         let px = 0, py = 0, nc = 0, t = "";
@@ -502,20 +539,26 @@ class ColorSelector extends Sprite {
                 }
             }
         }
-        new RollPower(this.select, ()=>{},"crosshair");
-
+        new RollPower(this.select, () => { }, "crosshair");
         this.select.addEventListener("mousemove", () => {
-            this.over = stage.getPixel(stage.stageX, stage.stageY), this.show(c)});
-
-        this.select.addEventListener("click", () => { 
-            this.current = this.over, this.show(c)});
-
-        this.show(c);
+            this.overColor = stage.getPixel(stage.stageX, stage.stageY);
+            this.show();
+        });
+        this.select.addEventListener("mouseup", () => {
+            this.selectedColor = this.overColor;
+            this.fill.color = this.selectedColor.val;
+            this.fill.alpha = this.selectedColor.alpha;
+            this.show();
+        });
+        this.show();
     }
-    show(c:number) {
+    show() {
         const gr = this.view.graphics;
         gr.clear();
-        gr.drawBox(0, 0, c*3, c*2, true, this.over.val, 1);
-        gr.drawBox(0, c*3, c*3, c*2, false, this.current.val, 1);
+        gr.drawBox(0, 0, 50, 24, true, this.overColor.val, this.alpha);
+        gr.write(0, 50, this.overColor.hex, GlobalFormat);
+        gr.drawBox(0, 75, 50, 24, false, this.selectedColor.val, this.alpha);
+        gr.write(25, 100, this.selectedColor.hex, GlobalFormat);
+        this.callback(this);
     }
 }

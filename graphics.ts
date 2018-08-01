@@ -110,12 +110,15 @@ class Graphics {
                 case 10:
                     ctx.moveTo(x0, y0);
                     for (let i = 1; i < pt.length; i++) ctx.lineTo(tr.x + pt[i].x, tr.y + pt[i].y);
+                    break;
+                case 11:
+                    ctx.moveTo(x0, y0);
+                    for (let i = 1; i < pt.length; i++) ctx.lineTo(tr.x + pt[i].x, tr.y + pt[i].y);
                     ctx.closePath();// trace la dernière ligne : polygone fermé
-                case 11:// texte 
+                    break;
+                case 12: // texte
                     c.textformat.applyOn(ctx);
                     ctx.fillText(c.text, x0, y0);
-                    break;
-
             }
             if (c.fill.color > -1) {
                 c.fill.applyOn(ctx);
@@ -180,8 +183,11 @@ class Graphics {
     drawPath(...pts: Point[]) {
         new GrCmd(this, 9, ...pts);
     }
+    drawLines(...pts: Point[]) {
+        new GrCmd(this, 10, ...pts);// forme ouverte, non remplie
+    }
     drawShape(...pts: Point[]) {
-        new GrCmd(this, 10, ...pts);
+        new GrCmd(this, 11, ...pts);// forme fermée, remplie
     }
     drawBox(x: number, y: number, w: number, h: number, up: boolean = true, bgColor: number, bgAlpha: number = 1.0) {
         let [topLeft, topRight, bottomRight, bottomLeft] = [
@@ -200,6 +206,6 @@ class Graphics {
         this.line(bottomLeft.x, bottomLeft.y, bottomRight.x-d, bottomRight.y); // bas
     }
     write(x: number, y: number, text: string, fmt: TextFormat) {
-        new GrCmd(this, 11, new Point(x, y)).write(text, fmt);
+        new GrCmd(this, 12, new Point(x, y)).write(text, fmt);
     }
 }

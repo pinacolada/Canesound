@@ -28,18 +28,28 @@ class Tool extends SpriteNode {
     static HR = 5;
     pts: SpriteNode[] = [];
     selArrow: Shape = new Shape(0, 0);
-    kdControl: KeyDownPower;
-    kuControl: KeyUpPower;
-    constructor(target: DisplayObjectContainer, toolType: string, x: number, y: number, public stroke: Stroke, public callback?:Function) {
+    stroke:Stroke = new Stroke();
+    fill:Fill = new Fill();
+    constructor(target: DisplayObjectContainer, toolType: string, x: number, y: number, public callback:Function) {
         super(target, toolType, x, y, Tool.HR, 0xFF0000, 0xFFFFFF, callback);
         this.curve = new Shape(5, 5);
         this.addChild(this.curve);
         this.selArrow.graphics.beginFill(0xff00ff, 1);
-        this.selArrow.graphics.drawShape(new Point(-8, 0), new Point(-16, -8),
-            new Point(-8, -16), new Point(0, -8), new Point(0, 0))
+        this.selArrow.graphics.drawShape(
+            new Point(-8, 0), 
+            new Point(-16, -8),
+            new Point(-8, -16),
+            new Point(0, -8), 
+            new Point(0, 0))
 
-        this.kdControl = new KeyDownPower(this, this.moveTool);
-        this.kuControl = new KeyUpPower(this, this.moveTool);
+        new KeyDownPower(this, this.moveTool);
+        new KeyUpPower(this, this.moveTool);
+        this.setDraw(toolFill, toolStroke);
+        
+    }
+    setDraw(fill:Fill, stroke:Stroke) {
+        this.fill.copy(fill);
+        this.stroke.copy(stroke);
     }
     rotateNodes(degres: number) {
         let radians = RAD(degres);
@@ -89,8 +99,8 @@ class Tool extends SpriteNode {
 }
 class LineTool extends Tool {
     sb: SpriteNode;
-    constructor(target: DisplayObjectContainer, x: number, y: number, stroke: Stroke, callback: Function) {
-        super(target, "Line", x, y, stroke, callback);
+    constructor(target: DisplayObjectContainer, x: number, y: number, callback: Function) {
+        super(target, "Line", x, y, callback);
         this.sb = this.addNode("b", Tool.SIZE, Tool.SIZE, Tool.HR, 0x00FF00, 0xFFFFFF);
         this.onMobile(this.sb);
     }
@@ -105,8 +115,8 @@ class LineTool extends Tool {
 class CurveTool extends Tool {
     sb: SpriteNode;
     sc: SpriteNode;
-    constructor(target: DisplayObjectContainer, x: number, y: number, stroke: Stroke, callback: Function) {
-        super(target, "Curve", x, y, stroke, callback);
+    constructor(target: DisplayObjectContainer, x: number, y: number, callback: Function) {
+        super(target, "Curve", x, y, callback);
         this.sb = this.addNode("b", Tool.SIZE, 0, Tool.HR, 0x0000FF, 0x999999);
         this.sc = this.addNode("c", 0, Tool.SIZE, Tool.HR, 0x00FF00, 0xFFFFFF);
         this.onMobile(this.sc);
@@ -123,8 +133,8 @@ class CubicTool extends Tool {
     sb: SpriteNode;
     sc: SpriteNode;
     sd: SpriteNode;
-    constructor(target: DisplayObjectContainer, x: number, y: number, stroke: Stroke, callback?: Function) {
-        super(target, "Cubic", x, y, stroke, callback);
+    constructor(target: DisplayObjectContainer, x: number, y: number, callback: Function) {
+        super(target, "Cubic", x, y, callback);
         this.sb = this.addNode("b", Tool.SIZE, 0, Tool.HR, 0x0000FF, 0x999999);
         this.sc = this.addNode("c", Tool.SIZE, Tool.SIZE, Tool.HR, 0x0000FF, 0x999999);
         this.sd = this.addNode("d", 0, Tool.SIZE, Tool.HR, 0x00FF00, 0xFFFFFF);
@@ -140,8 +150,8 @@ class CubicTool extends Tool {
 }
 class RectTool extends Tool {
     sb: SpriteNode;
-    constructor(target: DisplayObjectContainer, x: number, y: number, public fill: Fill, stroke: Stroke, callback: Function) {
-        super(target, "Rect", x, y, stroke, callback);
+    constructor(target: DisplayObjectContainer, x: number, y: number, callback: Function) {
+        super(target, "Rect", x, y, callback);
         this.sb = this.addNode("b", Tool.SIZE, Tool.SIZE, Tool.HR, 0x00FF00, 0xFFFFFF);
         this.onMobile(this.sb);
     }
@@ -158,8 +168,8 @@ class RectTool extends Tool {
 }
 class CircleTool extends Tool {
     sb: SpriteNode;
-    constructor(target: DisplayObjectContainer, x: number, y: number, public fill: Fill, stroke: Stroke, callback: Function) {
-        super(target, "Circle", x, y, stroke, callback);
+    constructor(target: DisplayObjectContainer, x: number, y: number, callback: Function) {
+        super(target, "Circle", x, y, callback);
         this.sb = this.addNode("b", Tool.SIZE, Tool.SIZE, Tool.HR, 0x00FF00, 0xFFFFFF);
         this.onMobile(this.sb);
     }
@@ -177,8 +187,8 @@ class CircleTool extends Tool {
 }
 class EllipseTool extends Tool {
     sb: SpriteNode;
-    constructor(target: DisplayObjectContainer, x: number, y: number, public fill: Fill, stroke: Stroke, callback: Function) {
-        super(target, "Ellipse", x, y, stroke, callback);
+    constructor(target: DisplayObjectContainer, x: number, y: number, callback: Function) {
+        super(target, "Ellipse", x, y, callback);
         this.sb = this.addNode("b", Tool.SIZE * 1, Tool.SIZE * 0.7, Tool.HR, 0x00FF00, 0xFFFFFF);
         this.onMobile(this.sb);
     }
@@ -195,8 +205,8 @@ class EllipseTool extends Tool {
 }
 class PolygonTool extends Tool {
     currentIndex: number = 1;
-    constructor(target: DisplayObjectContainer, x: number, y: number, public fill: Fill, stroke: Stroke, callback: Function) {
-        super(target, (fill.color == -1 ? "Polyline" : "Polygon"), x, y, stroke, callback);
+    constructor(target: DisplayObjectContainer, x: number, y: number, callback: Function, line:boolean=false) {
+        super(target, line ? "Polyline" : "Polygon", x, y, callback);
         let pts = [new Point(Tool.SIZE, 0), new Point(Tool.SIZE, Tool.SIZE), new Point(Tool.SIZE / 2, Tool.SIZE / 2), new Point(0, Tool.SIZE)];
         for (let p of pts) this.createSpriteNode(p);
         this.onMobile(this.pts[this.last]);
@@ -207,7 +217,10 @@ class PolygonTool extends Tool {
         g.clear();
         g.beginFill(f.color, f.alpha);
         g.lineStyle(s.thickness, s.color, s.alpha);
-        g.drawShape(new Point(0, 0), ...this.pts);
+        (this instanceof PolylineTool) ?
+            g.drawLines(new Point(0, 0), ...this.pts) :
+            g.drawShape(new Point(0, 0), ...this.pts) ;
+            
         this.currNode = sn;
         if (this.callback instanceof Function) this.callback(this);
     }
@@ -267,7 +280,6 @@ class PolygonTool extends Tool {
     }
     set currNode(value: SpriteNode) {
         let prev = this.currNode;
-        // if (prev === value) return;
         if (prev != null) prev.setColor(0x999999, 0xffffff);// gris ancien
         this.currentIndex = this.pts.indexOf(value);
         this.currNode.setColor(0xFFFF00, 0xffff00);// jaune nouveau
@@ -277,7 +289,7 @@ class PolygonTool extends Tool {
     }
 }
 class PolylineTool extends PolygonTool {
-    constructor(target: DisplayObjectContainer, x: number, y: number, stroke: Stroke, callback: Function) {
-        super(target, x, y, new Fill(-1), stroke, callback);// couleur -1 = pas de remplissage...
+    constructor(target: DisplayObjectContainer, x: number, y: number, callback: Function) {
+        super(target, x, y, callback, true);// couleur -1 = pas de remplissage...
     }
 }
