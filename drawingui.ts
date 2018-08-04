@@ -4,7 +4,10 @@ class SpriteNode extends Sprite {
         target.addChild(this);
         this.setColor(bg, border);
         if (target instanceof Tool) {
-            new DragPower(this, null, (e:InteractiveObject, m: string) =>  target.onMobile(e, m));
+            new DragPower(this, null, () => {
+                if(target instanceof PolygonTool) target.currNode = this;
+                target.onMobile()  
+            });
         } else {
             new DragPower(this, null, callback);
         }
@@ -45,7 +48,6 @@ class Tool extends SpriteNode {
         new KeyDownPower(this, this.moveTool);
         new KeyUpPower(this, this.moveTool);
         this.setDraw(toolFill, toolStroke);
-        
     }
     setDraw(fill:Fill, stroke:Stroke) {
         this.fill.copy(fill);
@@ -54,24 +56,24 @@ class Tool extends SpriteNode {
     rotateNodes(degres: number) {
         let radians = RAD(degres);
         this.pts.forEach(p => p.rotateSelf(radians));
-        this.onMobile(this.pts[0], "rotated");
+        this.onMobile();
     }
     translateNodes(tx:number, ty:number) {
         this.pts.forEach(p => p.addSelf(tx, ty));
-        this.onMobile(this.pts[0], "translated");
+        this.onMobile();
     }
     scaleNodes(factor: number) {
         this.pts.forEach(p => p.scaleSelf(factor));
-        this.onMobile(this.pts[0], "scaled");
+        this.onMobile();
     } 
     addNode(id: string, x: number, y: number, radius: number, bg: number, bdr: number, push:boolean=true): SpriteNode {
         let t: Tool = this;
         let sn = new SpriteNode(t, id, x, y, radius, bg, bdr,
-            (n: SpriteNode, msg: string) => t.onMobile(n, msg));
+            (n: SpriteNode, msg: string) => t.onMobile());
         if(push) t.pts.push(sn);
         return sn;
     }
-    onMobile(n: InteractiveObject, msg: string) {
+    onMobile() {
         // Dessin de l'outil terminé (implémenter pour les autres tools)
     }
     moveTool(s: InteractiveObject, k: KeyboardEvent) {
@@ -102,9 +104,9 @@ class LineTool extends Tool {
     constructor(target: DisplayObjectContainer, x: number, y: number, callback: Function) {
         super(target, "Line", x, y, callback);
         this.sb = this.addNode("b", Tool.SIZE, Tool.SIZE, Tool.HR, 0x00FF00, 0xFFFFFF);
-        this.onMobile(this.sb);
+        this.onMobile();
     }
-    onMobile(n:SpriteNode, m:string="") {
+    onMobile() {
         const s = this.stroke, g = this.curve.graphics;
         g.clear();
         g.lineStyle(s.thickness, s.color, s.alpha);
@@ -119,9 +121,9 @@ class CurveTool extends Tool {
         super(target, "Curve", x, y, callback);
         this.sb = this.addNode("b", Tool.SIZE, 0, Tool.HR, 0x0000FF, 0x999999);
         this.sc = this.addNode("c", 0, Tool.SIZE, Tool.HR, 0x00FF00, 0xFFFFFF);
-        this.onMobile(this.sc);
+        this.onMobile();
     }
-    onMobile(n:SpriteNode, m:string="") {
+    onMobile() {
         const s = this.stroke, g = this.curve.graphics;
         g.clear();
         g.lineStyle(s.thickness, s.color, s.alpha);
@@ -138,9 +140,9 @@ class CubicTool extends Tool {
         this.sb = this.addNode("b", Tool.SIZE, 0, Tool.HR, 0x0000FF, 0x999999);
         this.sc = this.addNode("c", Tool.SIZE, Tool.SIZE, Tool.HR, 0x0000FF, 0x999999);
         this.sd = this.addNode("d", 0, Tool.SIZE, Tool.HR, 0x00FF00, 0xFFFFFF);
-        this.onMobile(this.sd);
+        this.onMobile();
     }
-    onMobile(n:SpriteNode, m:string="") {
+    onMobile() {
         const s = this.stroke, g = this.curve.graphics;
         g.clear();
         g.lineStyle(s.thickness, s.color, s.alpha);
@@ -153,9 +155,9 @@ class RectTool extends Tool {
     constructor(target: DisplayObjectContainer, x: number, y: number, callback: Function) {
         super(target, "Rect", x, y, callback);
         this.sb = this.addNode("b", Tool.SIZE, Tool.SIZE, Tool.HR, 0x00FF00, 0xFFFFFF);
-        this.onMobile(this.sb);
+        this.onMobile();
     }
-    onMobile(n:SpriteNode, m:string="") {
+    onMobile() {
         const s = this.stroke, f = this.fill, g = this.curve.graphics;
         g.clear();
         this.sb.x = MAX(this.sb.x, 10);
@@ -171,9 +173,9 @@ class CircleTool extends Tool {
     constructor(target: DisplayObjectContainer, x: number, y: number, callback: Function) {
         super(target, "Circle", x, y, callback);
         this.sb = this.addNode("b", Tool.SIZE, Tool.SIZE, Tool.HR, 0x00FF00, 0xFFFFFF);
-        this.onMobile(this.sb);
+        this.onMobile();
     }
-    onMobile(sn:SpriteNode, msg:string="") {
+    onMobile() {
         const s = this.stroke, f = this.fill, g = this.curve.graphics;
         g.clear();
         this.sb.x = MAX(this.sb.x, 10);
@@ -181,7 +183,7 @@ class CircleTool extends Tool {
         g.beginFill(f.color, f.alpha);
         g.lineStyle(s.thickness, s.color, s.alpha);
         g.drawCircle(0, 0, this.sb.x / 2);
-        if (msg == "endDrag") this.sb.y = this.sb.x;
+        // this.sb.y = this.sb.x;
         if (this.callback instanceof Function) this.callback(this);
     }
 }
@@ -190,9 +192,9 @@ class EllipseTool extends Tool {
     constructor(target: DisplayObjectContainer, x: number, y: number, callback: Function) {
         super(target, "Ellipse", x, y, callback);
         this.sb = this.addNode("b", Tool.SIZE * 1, Tool.SIZE * 0.7, Tool.HR, 0x00FF00, 0xFFFFFF);
-        this.onMobile(this.sb);
+        this.onMobile();
     }
-    onMobile(sn:SpriteNode, msg:string="") {
+    onMobile() {
         const s = this.stroke, f = this.fill, g = this.curve.graphics;
         this.sb.x = MAX(this.sb.x, 10);
         this.sb.y = MAX(this.sb.y, 10);
@@ -209,10 +211,10 @@ class PolygonTool extends Tool {
         super(target, line ? "Polyline" : "Polygon", x, y, callback);
         let pts = [new Point(Tool.SIZE, 0), new Point(Tool.SIZE, Tool.SIZE), new Point(Tool.SIZE / 2, Tool.SIZE / 2), new Point(0, Tool.SIZE)];
         for (let p of pts) this.createSpriteNode(p);
-        this.onMobile(this.pts[this.last]);
+        this.onMobile();
         new KeyDownPower(this, this.onKeyboard);
     }
-    onMobile(sn:SpriteNode, msg:string="") {
+    onMobile(n?:any) {
         const s = this.stroke, f = this.fill, g = this.curve.graphics;
         g.clear();
         g.beginFill(f.color, f.alpha);
@@ -220,8 +222,7 @@ class PolygonTool extends Tool {
         (this instanceof PolylineTool) ?
             g.drawLines(new Point(0, 0), ...this.pts) :
             g.drawShape(new Point(0, 0), ...this.pts) ;
-            
-        this.currNode = sn;
+        if(n instanceof SpriteNode) this.currNode = n;    
         if (this.callback instanceof Function) this.callback(this);
     }
     createSpriteNode(p: Point): SpriteNode {
@@ -250,7 +251,7 @@ class PolygonTool extends Tool {
             case "2": p.translateNodes(0, 1); break;
             case "3": p.chooseNext(); break;
         }
-        p.onMobile(p.currNode);
+        p.onMobile();
     }
     choosePrev() {
         if (this.currentIndex > 0) this.currNode = this.pts[this.currentIndex -1];
@@ -273,7 +274,7 @@ class PolygonTool extends Tool {
             this.pts.splice(index, 1);
             this.currNode = this.pts[MIN(index, this.last)];
         }
-        this.onMobile(this.currNode);
+        this.onMobile();
     }
     get currNode() {
         return this.pts[this.currentIndex];

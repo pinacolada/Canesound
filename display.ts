@@ -36,7 +36,8 @@ class DisplayObject extends Rectangle {
     remove() {
         if (this.parent) this.parent.removeChild(this);
     }
-    render(ctx: CanvasRenderingContext2D) {
+    render(ctx: CanvasRenderingContext2D, e: Event) {
+        if (this instanceof InteractiveObject) this.dispatchEvent("enterframe", e);
     }
     getRect() {
         return new Rectangle(this.x, this.y, this.w, this.h);
@@ -177,21 +178,21 @@ class Sprite extends DisplayObjectContainer {
     write(x: number, y: number, text: string, fmt: TextFormat) {
         new GrCmd(this.graphics, 11, new Point(x, y)).write(text, fmt);
     }
-    render(ctx: CanvasRenderingContext2D) {
+    render(ctx: CanvasRenderingContext2D, e: Event) {
         if (this.visible) {
             this.graphics.applyTo(ctx, this.trans.stage);
-            for (let c of this.children) c.render(ctx);
+            for (let c of this.children) c.render(ctx, e);
         }
     }
 }
 class RollPower {
     constructor(s: InteractiveObject, callback: (i: DisplayObject, s: string) => void, cursorType: string = "pointer") {
         s.addEventListener("mouseover", () => {
-            (s.stage as Stage).css.cursor = cursorType;
+            (s.stage as Stage).cursor = cursorType;
             callback(s, "over");
         });
         s.addEventListener("mouseout", () => {
-            (s.stage as Stage).css.cursor = "auto";
+            (s.stage as Stage).cursor = "auto";
             callback(s, "out")
         })
     }
@@ -208,29 +209,13 @@ class KeyDownPower {
         s.addEventListener("keydown", (s: InteractiveObject, t: string, k: KeyboardEvent) => callback(s, k))
     }
 }
-class MovePower {
-    constructor(public s: Sprite, public callback: (s: Sprite, x: number, y: number) => void, cursorType: string) {
-        const stage = s.stage as Stage
-        new RollPower(s, resetCursor, cursorType);
-        function move() {
-            callback(s, stage.stageX, stage.stageY);
-        }
-        function resetCursor(s: any, msg: string) {
-            if (msg === "out") {
-                s.removeEventListener("mousemove", move);
-            } else {
-                s.addEventListener("mousemove", move);
-            }
-        }
-    }
-}
 class DragPower {
-    constructor(public s: Sprite, public lim: Rectangle | null, public callback: (s: Sprite, msg: string) => void | Function, public dragCursor: string = "move") {
+    constructor(public s: Sprite, public lim: Rectangle | null, public callback: (dragged: any, msg: string) => void | Function, public dragCursor: string = "move") {
         let hit = new Point(), stage = s.stage as Stage;
         new RollPower(s, resetCursor, dragCursor);
         function startDrag() {
             hit.setPos(stage.stageX - s.x, stage.stageY - s.y);
-            stage.css.cursor = dragCursor;
+            stage.cursor = dragCursor;
             s.removeEventListener("mousedown", startDrag);
             s.addEventListener("mouseup", stopDrag);
             s.addEventListener("mousemove", drag);
@@ -264,12 +249,11 @@ class DragPower {
 }
 class Stage extends DisplayObjectContainer {
     /**
-     * éléments interactifs trouvés sous la souris
+     * liste des éléments interactifs trouvés sous la souris
      */
     underMouse: InteractiveObject[];
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
-    css: CSSStyleDeclaration;
     bg: number = 0;
     graphics: Graphics;
     stageX: number = 0;
@@ -279,7 +263,6 @@ class Stage extends DisplayObjectContainer {
         this.underMouse = [];
         this.canvas = document.createElement("canvas");
         this.ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
-        this.css = this.canvas.style;
         document.body.appendChild(this.canvas);
         this.stage = this;
         this.graphics = new Graphics(this);
@@ -332,13 +315,14 @@ class Stage extends DisplayObjectContainer {
     }
     getPixel(x: number, y: number): Color {
         let c = this.ctx.getImageData(x, y, 1, 1).data
-        return Color.FromRgba(c[0], c[1], c[2], c[3]);
+        return Color.FromRgba(c[0], c[1], c[2], c[3] / 255);
     }
     render() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        for (let c of this.children) c.render(this.ctx);
         let s: Stage = this;
-        s.dispatchEvent("enterframe", new CustomEvent("enterframe", { detail: { stage: s } }));
+        let e = new CustomEvent("enterframe", { detail: { stage: s } });
+        s.dispatchEvent("enterframe", e);
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        for (let c of this.children) c.render(this.ctx, e);
         requestAnimationFrame(e => s.render());
     }
     get backgroundColor(): number {
@@ -346,19 +330,25 @@ class Stage extends DisplayObjectContainer {
     }
     set backgroundColor(value: number) {
         this.bg = value;
-        this.css.backgroundColor = new Color(this.bg).css;
+        this.canvas.style.backgroundColor = new Color(this.bg).css;
     }
-    get stageWidth() {
+    get width() {
         return this.w;
     }
-    set stageWidth(value) {
+    set width(value) {
         this.w = this.canvas.width = value;
     }
-    get stageHeight() {
+    get height() {
         return this.h;
     }
-    set stageHeight(value) {
+    set height(value) {
         this.h = this.canvas.height = value;
+    }
+    get cursor(): string {
+        return this.canvas.style.cursor as string;
+    }
+    set cursor(value: string) {
+        this.canvas.style.cursor = value;
     }
 }
 class Grid extends Sprite {
@@ -390,175 +380,5 @@ class Grid extends Sprite {
             gr.line(0, py, this.w, py);
             this.write(dx, py + 2, r.toString(), this.fmt);
         }
-    }
-}
-class UiElement extends Sprite {
-    constructor(target:DisplayObjectContainer, name:string, x:number, y:number, w:number, h:number, callback:(e:UiElement)=>void) {
-        super(name, x, y, w, h)
-        target.addChild(this);
-    }
-}
-class Button extends UiElement {
-    _txt: string = "";
-    constructor(target: DisplayObjectContainer, name: string, public title: string, x: number, y: number, w: number, h: number, callback: (e:UiElement) => void) {
-        super(target, name, x, y, w, h, callback);
-        this.text = title;
-        new RollPower(this, this.onMouse, "pointer");
-        this.onMouse(this, "out");
-        this.addEventListener("click", () => callback(this));
-    }
-    onMouse(b: any, msg: string) {
-        b.graphics.clear();
-        b.graphics.drawBox(0, 0, b.w, b.h, true, msg === "out" ? 0x9999FF : 0x6666FF);
-        b.graphics.write(b.w / 2, (b.h / 2) + 4, b.title, GlobalFormat);
-    }
-    get text(): string {
-        return this._txt;
-    }
-    set text(value: string) {
-        this._txt = value;
-    }
-}
-class HRange extends UiElement {
-        curs: Sprite;
-        constructor(target: DisplayObjectContainer, name: string, x: number, y: number, w:number, public callback: (s: UiElement) => void) {
-            super(target, name, x, y, w, 20, callback);
-            this.graphics.drawBox(0, 10, w, 2, false, 0x555599, 1.0);// creux, plus sombre que scène
-            let curs: Sprite = new Sprite("curs", 0, 0, 12, 20), gr = curs.graphics;
-            gr.drawBox(0, 0, 14, 20, true, 0x666699);
-            gr.line(3, 6, 11, 6);
-            gr.line(3, 10, 11, 10);
-            gr.line(3, 14, 11, 14);
-            this.addChild(curs);
-            new DragPower(curs, new Rectangle(0, 0, this.w, this.h), () => this.callback(this), "pointer");
-            this.curs = curs;
-            this.percent = 1.0;
-        }
-        get percent(): number {
-            return this.curs.x / (this.w - 14);
-        }
-        set percent(value: number) {
-            value = MIN(value, 1);
-            value = MAX(value, 0);
-            this.curs.x = value * (this.w - 14);
-            this.callback(this);
-        }
-}
-class HSlider extends UiElement {
-    curs: Sprite;
-    cursSize: number = 0.25;
-    constructor(target: DisplayObjectContainer, name: string, x: number, y: number, w: number, h: number, public callback: (s: UiElement) => void, public showVal: boolean) {
-        super(target, name, x, y, w, h, callback);
-        this.graphics.drawBox(0, 0, w, h, false, 0x555599, 1.0);// creux, plus sombre que scène
-        let curs: Sprite = new Sprite("curs", 0, 0, this.cursSize * w, h);
-        this.addChild(curs);
-        new DragPower(curs, new Rectangle(0, 0, this.w, this.h), () => this._draw(), "pointer");
-        this.curs = curs;
-        this.percent = 0.5;
-    }
-    _draw() {
-        let curs = this.curs, h = this.h, w = this.w, v = this.percent * 100;
-        curs.w = this.cursSize * w;
-        curs.graphics.clear();
-        curs.graphics.drawBox(1, 1, curs.w - 2, h - 2, true, 0x666699);// bombé, plus clair que scène
-        if (this.showVal) curs.write(curs.w / 2, (h / 2) + 4, v.toFixed(0) + "%", GlobalFormat);
-        this.callback(this);
-    }
-    get percent(): number {
-        return this.curs.x / (this.w - this.curs.w);
-    }
-    set percent(value: number) {
-        value = MIN(value, 1);
-        value = MAX(value, 0);
-        this.curs.x = value * (this.w - this.curs.w);
-        this._draw();
-    }
-}
-
-class VSlider extends UiElement {
-    curs: Sprite;
-    cursSize: number = 0.25;
-    constructor(target: DisplayObjectContainer, name: string, x: number, y: number, w: number, h: number, public callback: (s: UiElement) => void, public showVal: boolean) {
-        super(target, name, x, y, w, h, callback);
-        this.graphics.drawBox(0, 0, w, h, false, 0x555599, 1.0);
-        let curs: Sprite = new Sprite("curs", 0, 0, w, this.cursSize * h);
-        this.addChild(curs);
-        new DragPower(curs, new Rectangle(0, 0, this.w, this.h), () => this._draw(), "pointer");
-        this.curs = curs;
-        this.pourcent = .5;
-    }
-    _draw() {
-        let curs = this.curs, h = this.h, w = this.w, v = this.pourcent * 100;
-        curs.h = this.cursSize * h;
-        curs.graphics.clear();
-        curs.graphics.drawBox(1, 1, w - 2, curs.h - 2, true, 0x777799);
-        if (this.showVal) curs.write(w / 2, (curs.h / 2) + 4, v.toFixed(0) + "%", GlobalFormat);
-    }
-    get pourcent(): number {
-        return this.curs.y / (this.h - this.curs.h);
-    }
-    set pourcent(value: number) {
-        value = MIN(value, 1.0);
-        value = MAX(value, 0.0);
-        this.curs.y = value * (this.h - this.curs.h);
-        this._draw();
-    }
-}
-class ColorSelector extends UiElement {
-    overColor: Color;
-    selectedColor: Color;
-    view: Shape;
-    select: Sprite;
-    alpha: number = 1.0;
-    fill:Fill = new Fill();
-    stroke:Stroke = new Stroke();
-
-    constructor(target: DisplayObjectContainer, name: string, x: number, y: number, public callback:(e:UiElement)=>void, colr: number = 0x666666) {
-        super(target, name, x, y, 300, 200, callback);
-        const c = 12, col = ["00", "33", "66", "99", "CC", "FF"];
-        this.graphics.drawBox(0, 0, this.w, this.h, true, 0x9999FF, 1);
-        this.selectedColor = this.overColor = new Color(colr);
-        this.view = new Shape(240, 12);
-        this.addChild(this.view);
-        this.select = new Sprite("select", c, c, c * 18, c * 12);
-        this.addChild(this.select);
-        let alphaSlid = new HRange(this, "alpha", 240, c * 11, 50, (al:UiElement)=>{
-            this.alpha = (al as HRange).percent;
-        });
-        alphaSlid.percent = 1.0;
-
-        const stage = this.stage as Stage, gr = this.select.graphics;
-        let px = 0, py = 0, nc = 0, t = "";
-        for (let r = 0; r < 6; r++) {
-            for (let g = 0; g < 6; g++) {
-                for (let b = 0; b < 6; b++) {
-                    t = col[r] + col[g] + col[b];
-                    gr.beginFill(parseInt(t, 16), 1);
-                    gr.drawRect(px, py, c, c);
-                    px += c, nc++; if (nc == 18) nc = 0, px = 0, py += c;
-                }
-            }
-        }
-        new RollPower(this.select, () => { }, "crosshair");
-        this.select.addEventListener("mousemove", () => {
-            this.overColor = stage.getPixel(stage.stageX, stage.stageY);
-            this.show();
-        });
-        this.select.addEventListener("mouseup", () => {
-            this.selectedColor = this.overColor;
-            this.fill.color = this.selectedColor.val;
-            this.fill.alpha = this.selectedColor.alpha;
-            this.show();
-        });
-        this.show();
-    }
-    show() {
-        const gr = this.view.graphics;
-        gr.clear();
-        gr.drawBox(0, 0, 50, 24, true, this.overColor.val, this.alpha);
-        gr.write(0, 50, this.overColor.hex, GlobalFormat);
-        gr.drawBox(0, 75, 50, 24, false, this.selectedColor.val, this.alpha);
-        gr.write(25, 100, this.selectedColor.hex, GlobalFormat);
-        this.callback(this);
     }
 }

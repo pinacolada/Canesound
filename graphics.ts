@@ -1,7 +1,7 @@
 
 // ******************************************************************************************************************************************************************************************************
 
-// GRAPHICS GrCmd - Fill - Stroke - Gradient - Graphics
+// GRAPHICS : GrCmd - Fill - Stroke - Gradient* - Pattern* - GrCmd - Graphics (*:todo)
 
 // ******************************************************************************************************************************************************************************************************
 class Fill {
@@ -27,6 +27,8 @@ class Stroke {
     }
     applyOn(ctx: CanvasRenderingContext2D) {
         ctx.strokeStyle = new Color(this.color, this.alpha).css;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
         ctx.lineWidth = this.thickness;
     }
     copy(s: Stroke) {
@@ -67,7 +69,7 @@ class Graphics {
         this.clear();
     }
     applyTo(ctx: CanvasRenderingContext2D, tr: Point) {
-        if(this.obj.visible==false) this.commands=[];
+        if(this.obj.visible==false) return;
         for (let c of this.commands) {
             let pt = c.pts;
             let [x0, y0, p1, p2, p3] = [tr.x + pt[0].x, tr.y + pt[0].y, pt[1], pt[2], pt[3]];
@@ -132,6 +134,7 @@ class Graphics {
     }
     clear() {
         this.commands = [];
+        this.setPos(0, 0);
     }
     setPos(x: number, y: number) {
         this.pos.x = x;

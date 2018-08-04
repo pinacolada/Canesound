@@ -1,10 +1,10 @@
 const toolStroke = new Stroke(2, 0xFFFF00, 0.5);
 const toolFill = new Fill(0x336699, 0.5);
 const GlobalFormat = new TextFormat("calibri", 14, 0x0000ff, false, false, false, "center");
-
+const CheckFormat = new TextFormat("calibri", 14, 0x000000, false, false, false, "left");
 const stage = new Stage(document.body);
-stage.stageWidth = 1024;
-stage.stageHeight = 800;
+stage.width = 1024;
+stage.height = 800;
 stage.backgroundColor = 0x666699;
 
 const grid = new Grid(stage, "grille", 100, 30, 16 * 30, 16 * 30);
@@ -27,11 +27,32 @@ tools = [
 ];
 
 let btnLeft = 600, btnTop = 30, btnWidth = 100, btnHeight = 30;
-new ColorSelector(stage, "fillColor", 100, 550, onColorSelected, 0xFF0000);
+new ColorSelector(stage, "colorSelector", 100, 550, onColorSelected, 0xFF0000);
 
 let cmds = ["Clear", "Line", "Curve", "Cubic", "Rect", "Circle", "Ellipse", "Polyline", "Polygon"];
 let frcmds = ["Effacer", "Ligne", "Courbe 1pt", "Courbe 2pts", "Rectangle", "Cercle", "Ellipse", "Segments", "Polygone"];
 cmds.forEach((c, i) => new Button(stage, c, frcmds[i], btnLeft, btnTop + (btnHeight * i), btnWidth, btnHeight - 2, btnCmd));
+
+/*
+new Radio(stage, "commandes",600, 400, true, cmds, chkCmd);
+
+function chkCmd(r:Radio) {
+    let next = currentTool ? currentTool.addPoint(currentTool.pts[0]).add(40,0) : grid.topLeft;
+    switch (r.selected.name) {
+        case "Clear": draw.forEach(t => t.remove()); draw = []; break;  
+        case "Line": draw.push( new LineTool(stage, next.x, next.y, showCurrentTool) ); break;
+        case "Curve": draw.push( new CurveTool(stage, next.x, next.y, showCurrentTool) );break;
+        case "Cubic": draw.push( new CubicTool(stage, next.x, next.y, showCurrentTool) );break;
+        case "Rect": draw.push( new RectTool(stage, next.x, next.y, showCurrentTool) );break;
+        case "Circle": draw.push( new CircleTool(stage, next.x, next.y, showCurrentTool) );break;
+        case "Ellipse": draw.push( new EllipseTool(stage, next.x, next.y, showCurrentTool) );break;
+        case "Polyline": draw.push( new PolylineTool(stage, next.x, next.y, showCurrentTool) );break;
+        case "Polygon": draw.push( new PolygonTool(stage, next.x, next.y, showCurrentTool) ); break;
+        case "Load": ; break;
+        case "Save": ; break;
+    }
+}
+*/
 
 let numPad = ["", "/ Scale-","* Scale+","- Del Pt",
     "R°z -",     "T_y -",  "R°z +",  "+ Add Pt",
@@ -43,6 +64,7 @@ numPad.forEach((c, i) =>
 function onColorSelected(cs: UiElement) {
     let s = cs as ColorSelector;
     currentTool.setDraw(s.fill, s.stroke);
+    currentTool.onMobile();
 }
 function onNumPad(b: UiElement) {
     let p = currentTool as PolygonTool;
@@ -91,11 +113,11 @@ grid.addEventListener("click", () => addPointToGrid(grid));
 
 function addPointToGrid(g: Grid) {
     let stage = g.stage as Stage, tool = currentTool;
-    if (stage.css.cursor !== "auto") return;
+    if (stage.cursor !== "auto") return;
     if (tool instanceof PolylineTool || tool instanceof PolygonTool) {
         let zero = new Point(0,0), m = new Point(tool.mouseX, tool.mouseY);
         if (tool.pts.find((p) => p.distTo(m) < 20)) return;
-        let sn = tool.createSpriteNode(m);
-        tool.onMobile(sn);
+        tool.createSpriteNode(m);
+        tool.onMobile();
     }
 }

@@ -14,7 +14,7 @@ class Color {
     static FromCss(csstext: string | null): Color {
         csstext = csstext || "rgba(0,0,0,1)";
         let [r, g, b] = csstext.split("(")[1].split(",").map(t => parseInt(t));
-        return Color.FromRgba(r,g,b,1);
+        return Color.FromRgba(r,g,b,1.0);
     }
     static FromRgba(r:number, g:number, b:number, alpha:number = 1.0) {
         return new Color(r << 16 | g << 8 | b, alpha);
